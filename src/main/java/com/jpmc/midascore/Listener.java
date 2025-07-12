@@ -1,13 +1,9 @@
 package com.jpmc.midascore;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jpmc.midascore.component.DatabaseConduit;
 import com.jpmc.midascore.entity.TransactionRecord;
 import com.jpmc.midascore.entity.UserRecord;
 import com.jpmc.midascore.foundation.Incentive;
 import com.jpmc.midascore.foundation.Transaction;
-import com.jpmc.midascore.repository.TransactionRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -60,9 +56,9 @@ public class Listener {
         // create rest template
         restTemplate = new RestTemplate();
         ResponseEntity<Incentive> response = restTemplate.postForEntity(
-                "http://localhost:8080/incentive",
-                transaction,
-                Incentive.class
+                "http://localhost:8080/incentive",     // post url
+                transaction,         // transaction is the object (to be serialized) to be posted
+                Incentive.class      // Incentive class (serializable) is the return type
         );
 
         // get the incentive amount (Default to 0)
