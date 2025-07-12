@@ -1,17 +1,23 @@
 package com.jpmc.midascore;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jpmc.midascore.component.DatabaseConduit;
 import com.jpmc.midascore.entity.TransactionRecord;
 import com.jpmc.midascore.entity.UserRecord;
+import com.jpmc.midascore.foundation.Incentive;
 import com.jpmc.midascore.foundation.Transaction;
 import com.jpmc.midascore.repository.TransactionRepository;
+import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
 @Component
 public class Listener {
 
     private final DatabaseConduit databaseConduit;
+    private RestTemplate restTemplate;
 
     // create database instance
     public Listener(DatabaseConduit databaseConduit) {
@@ -49,18 +55,42 @@ public class Listener {
         TransactionRecord transactionRecord = new TransactionRecord(senderID, recipientID, amount);
         databaseConduit.saveTransaction(transactionRecord);
 
+        // get the incentive pay from the API
+        // first run  java -jar transaction-incentive-api.jar  in /services
+        // create rest template
+        restTemplate = new RestTemplate();
+        ResponseEntity<Incentive> response = restTemplate.postForEntity(
+                "http://localhost:8080/incentive",
+                transaction,
+                Incentive.class
+        );
+
+        // get the incentive amount (Default to 0)
+        Incentive incentive = response.getBody();
+        float incentiveAmount = incentive == null ? 0 : incentive.getAmount();
+        System.out.println("Incentive amount: " + incentiveAmount);
+
+
         // and adjust the remaining balance of the sender and recipient
         senderUser.setBalance(senderUser.getBalance() - amount);
-        recipientUser.setBalance(recipientUser.getBalance() + amount);
+        recipientUser.setBalance(recipientUser.getBalance() + amount + incentiveAmount);
         databaseConduit.save(senderUser);
         databaseConduit.save(recipientUser);
 
-        // print final debug message
+        // print final debug message for task 3
         if (senderUser.getName().equals("waldorf")){
-            System.out.println("Balance of waldorf: " + senderUser.getBalance());
+            System.out.println("Balance of waldorf after sent: " + senderUser.getBalance());
         }
         if (recipientUser.getName().equals("waldorf")){
-            System.out.println("Balance of waldorf: " + recipientUser.getBalance());
+            System.out.println("Balance of waldorf after received: " + recipientUser.getBalance());
+        }
+
+        // for task 4
+        if (senderUser.getName().equals("wilbur")){
+            System.out.println("Balance of wilbur after sent: " + senderUser.getBalance());
+        }
+        if (recipientUser.getName().equals("wilbur")){
+            System.out.println("Balance of wilbur after received: " + recipientUser.getBalance());
         }
 
     }
